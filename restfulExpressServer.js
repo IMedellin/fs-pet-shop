@@ -6,23 +6,25 @@ const { Pool } = require('pg');
 const pool = new Pool({
   database: "petshop"
 })
-pool.query('SELECT * FROM pets', (err, result) => {
-  console.log(result.rows)
-})
+
 
 app.use(express.json());
 
-app.get("/pets", (req, res) => {
-  fs.readFile('pets.json', 'utf-8', (err, data) => {
-    res.send(data);
-  })
+app.get("/pets/:index", (req, res) => {
+  const index = req.params.index;
+  if (index !== undefined) {
+    pool.query("SELECT * FROM pets WHERE id = $1", [index], (err, result) => {
+      res.send(result.rows[0])
+    })
+  } else {
+    pool.query("SELECT * FROM pets", (err, results) => {
+      res.send(result.rows)
+    })
+  }
 })
 
 app.post("/pets", (req, res) => {
   const newPet = { age, kind, name } = req.body;
-  pool.query('INSERT INTO pets(age,name,kind) VALUES ($1, $2, $3)', (err, result) => {
-    console.log(result)
-  })
   if (!age || !kind || !name) {
     res.status(400).send('Bad Request');
     return
@@ -44,9 +46,23 @@ app.post("/pets", (req, res) => {
 app.patch('/pets/:id', (req, res) => {
   const { age, kind, name } = req.body;
   const { id } = req.params;
-
+  const query = `
+  UPDATE pets SET
+  age = COALESCE($1, age),
+  name = COALESCE($2, name),
+  kind = COALESCE($3, kind)
+  WHERE id = $4
+  RETURNING *
+  `;
 })
 
-
+app.delete("/pets/:index", (req, res) => {
+  const index = req.params.indes;
+  if (index !== undefined) {
+    pool.query("DELETE FROM pets WHERE id = $1", [index], (err, result) => {
+      res.send(`${index}`)
+    })
+  }
+})
 
 app.listen(4000)
